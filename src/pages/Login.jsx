@@ -1,10 +1,14 @@
 import React from 'react'
 import {useForm} from 'react-hook-form'
+import {useNavigate} from 'react-router-dom'
 const Login = () => {
- const {register,reset ,handleSubmit, formState: {errors}} = useForm();
- const onSubmit=(data)=>{
+ const {register,reset ,handleSubmit, formState: {errors,isSubmitting}} = useForm();
+ const navigate = useNavigate();
+ const onSubmit= async (data)=>{
   console.log(data);
-  reset();
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    reset(); 
+    navigate("/dashboard");
  };
 
 
@@ -40,15 +44,23 @@ const Login = () => {
         <input {...register("name",{required:"Name is required"})}   placeholder="Enter your full name" className="border border-gray-400 text-sm px-2 py-1 md:py-2   w-full rounded " type="text" />
        {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
   <label>Email</label>
-        <input {...register("email",{required:"Email is required"},{pattern: {value:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,message:"Invalid email address"}})} placeholder="Enter your email" className="border md:py-2  border-gray-400 w-full text-sm px-2 py-1 rounded " type="text" />
+        <input {...register("email",{required:"Email is required",pattern: {value:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,message:"Invalid email address"}})} placeholder="Enter your email" className="border md:py-2  border-gray-400 w-full text-sm px-2 py-1 rounded " type="text" />
        {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
   <label>Password</label>
-        <input {...register("password",{required:"Password is required"},{minLength: {value:6,message:"Password must be at least 6 characters"}})} placeholder="Enter your password" className="border border-gray-400 md:py-2  w-full text-sm px-2 py-1 rounded " type="password" />
+        <input {...register("password",{required:"Password is required",minLength: {value:6,message:"Password must be at least 6 characters"}})} placeholder="Enter your password" className="border border-gray-400 md:py-2  w-full text-sm px-2 py-1 rounded " type="password" />
        {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
 
       <div className="submit-button  flex items-center justify-center mt-4">
 
-      <button type="submit" className="border w-full bg-black text-white px-4 py-2 rounded-xl"  >Create Account  </button>
+      <button disabled={isSubmitting}  type="submit" className="border cursor-pointer w-full bg-black text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 disabled:opacity-70"  >
+        {isSubmitting ? (<>
+      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+      Creating account...
+    </>
+  ) : (
+    "Create Account"
+  )}
+      </button>
       </div>
    </form>
 
