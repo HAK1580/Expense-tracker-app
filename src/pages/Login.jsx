@@ -30,7 +30,7 @@ const Login = () => {
 
       <div className="login-box-form     md:w-[60%] p-2">
     
-      <div className="login-box-header  md:w-[60%]  my-8 flex  flex-col items-center justify-center  ">
+      <div className="login-box-header  md:w-[60%] md:mt-12  my-8 flex  flex-col items-center justify-center  ">
         <div className="img">
           <img className="md:hidden"  width="32" src="dollar-sign-96.png" alt="" />
         </div>
