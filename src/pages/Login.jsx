@@ -41,13 +41,13 @@ const Login = () => {
 
         <form className="flex md:w-[60%] mx-auto md:mx-[1%]  flex-col gap-1 p-2" onSubmit={handleSubmit(onSubmit)}>
   <label>Full name</label>
-        <input {...register("name",{required:"Name is required"})}   placeholder="Enter your full name" className="border border-gray-400 text-sm px-2 py-1 md:py-2   w-full rounded " type="text" />
+        <input {...register("name",{required:"Name is required"})}   placeholder="Enter your full name" className="border border-gray-400 text-sm px-2 py-2 md:py-2   w-full rounded " type="text" />
        {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
   <label>Email</label>
-        <input {...register("email",{required:"Email is required",pattern: {value:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,message:"Invalid email address"}})} placeholder="Enter your email" className="border md:py-2  border-gray-400 w-full text-sm px-2 py-1 rounded " type="text" />
+        <input {...register("email",{required:"Email is required",pattern: {value:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,message:"Invalid email address"}})} placeholder="Enter your email" className="border md:py-2  border-gray-400 w-full text-sm px-2 py-2 rounded " type="text" />
        {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
   <label>Password</label>
-        <input {...register("password",{required:"Password is required",minLength: {value:6,message:"Password must be at least 6 characters"}})} placeholder="Enter your password" className="border border-gray-400 md:py-2  w-full text-sm px-2 py-1 rounded " type="password" />
+        <input {...register("password",{required:"Password is required",minLength: {value:6,message:"Password must be at least 6 characters"}})} placeholder="Enter your password" className="border border-gray-400 md:py-2  w-full text-sm px-2 py-2 rounded " type="password" />
        {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
 
       <div className="submit-button  flex items-center justify-center mt-4">
