@@ -17,6 +17,7 @@ function App() {
     <div  >
      <Routes>
       <Route path="/" element= {<Login />}   />
+      <Route path="/login" element= {<Login />}   />
       <Route path="/balance" element= {<Balance balance={balance} setBalance={setBalance} spent={spent} setSpent={setSpent} />}   />
       <Route path="/dashboard" element= {<Dashboard balance={balance} setBalance={setBalance} spent={spent} setSpent={setSpent} />}   />
     
