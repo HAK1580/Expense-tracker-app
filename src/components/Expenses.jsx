@@ -1,177 +1,241 @@
-import React from 'react'
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+
 const Expenses = ({ balance, setBalance, setSpent, spent }) => {
-  const { handleSubmit, register, reset, formState: { errors } } = useForm();
-  const onSubmit = (data => {
-    myexpenses.push(data);
-    console.log(myexpenses);
-    setSpent((spent + Number(data.price)));
+  const {
+    handleSubmit,
+    register,
+    reset,
+    formState: { errors },
+  } = useForm();
+
+  const [myexpenses, setMyexpenses] = useState([]);
+  const [popup, setPopup] = useState(false);
+
+  const onSubmit = (data) => {
+    // Immutable state update (React best practice)
+    setMyexpenses((prev) => [...prev, data]);
+    setSpent(spent + Number(data.price));
     setBalance(balance - Number(data.price));
     setPopup(false);
     reset();
-
-  })
-
-  const [myexpenses, setMyexpenses] = useState([
-    //   {
-    //   "name": "Groseries",
-    //   "cateogory": "food",
-    //   "price": "850"
-    // },
-
-  ]);
-
-
-
-  const [popup, setPopup] = useState(false);
-
+  };
 
   return (
-    <div className="div ">
+    <div className="w-full">
+      {/* MOBILE VERSION */}
+      <div className="mobile-version block md:hidden p-4">
+        <h1 className="font-semibold text-xl mb-4">Recent Expenses</h1>
 
-      <div className='mobile-version md:hidden'  >
-        <h1 className='font-semibold ' >Recent Expenses</h1>
-        {myexpenses.map((e) => {
+        {myexpenses.map((e, index) => (
+          <div
+            key={index}
+            className="expense-box border rounded-xl p-3 border-gray-200 bg-white shadow-sm my-2 flex justify-between items-center"
+          >
+            <div className="name-date flex flex-col">
+              <h1 className="font-bold capitalize text-gray-800">{e.name}</h1>
+              <h2 className="text-xs text-gray-500 capitalize">{e.category}</h2>
+            </div>
+            <div className="expense-price">
+              <h1 className="font-bold text-red-600 text-base">-Rs {e.price}</h1>
+            </div>
+          </div>
+        ))}
 
-          return (
+        {spent === 0 && (
+          <div className="no-recent-expenses my-10 flex justify-center items-center">
+            <h1 className="italic font-semibold text-gray-400">No recent expenses</h1>
+          </div>
+        )}
 
+        {/* Trigger Button */}
+        <button
+          onClick={() => setPopup(true)}
+          className="bg-black py-3.5 my-6 rounded-xl font-semibold w-full text-white shadow-md active:scale-95 transition-transform"
+        >
+          + Add Expense
+        </button>
 
-            <div className="expense-box  border rounded p-2 border-gray-400 my-2 flex justify-between items-center ">
-
-              <div className="name-date flex flex-col">
-                <h1 className='font-bold capitalize ' >{e.name}</h1>
-                <h2 className='text-sm text-gray-500  capitalize' >{e.cateogory}</h2>
+        {/* MOBILE POPUP MODAL */}
+        {popup && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="popup-box bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all">
+              {/* Header */}
+              <div className="add-expense-cross-sign pb-3 border-b border-gray-100 flex justify-between items-center">
+                <h1 className="font-bold text-xl text-gray-800">Add Expense</h1>
+                <button
+                  type="button"
+                  onClick={() => setPopup(false)}
+                  className="text-gray-400 hover:text-black font-bold text-xl px-2"
+                >
+                  ✕
+                </button>
               </div>
 
-              <div className="expense-price">
-                <h1 className='font-bold mx-2'>-Rs {e.price} </h1>
-              </div>
-
-            </div>
-
-          )
-        })}
-
-        <div className={`no-recent-expenses my-5 flex justify-center items-center ${spent == 0 ? "block" : "hidden"} `}>
-          <h1 className=" italic  font-semibold text-gray-400  ">No recent expenses</h1>
-        </div>
-
-
-
-        {/* now the button to add the expenses  */}
-        <button onClick={() => setPopup(!popup)} className='bg-black p-3 my-10 rounded-xl font-semibold w-full text-white '> + Add Expense</button>
-        {/* make the pop up window  */}
-
-        <div className={`add-expense-popup ${popup ? "block" : "hidden"} md:hidden  fixed flex justify-center items-center inset-0  `}>
-          <div className="popup-box bg-white border p-4 border-gray-600 rounded-2xl min-h-130 w-[90%] mx-auto ">
-            <div className="add-expense-cross-sign my-2 flex justify-between items-center">
-              <h1 className=' font-bold' >Add expense</h1>
-              <img onClick={() => setPopup(false)} src="cross.svg" alt="no img" className='mx-2 cursor-pointer w-5' />
-            </div>
-
-            <div className="expense-info-box  p-2">
-              <form onSubmit={handleSubmit(onSubmit)}>
-
-                <div className="amount my-8 flex   justify-between items-center  ">
-                  <h1 className='text-lg text-gray-700' > Amount &nbsp; :  </h1>
-                  <label className='text-xl text-gray-400 flex justify-center items-center  ' htmlFor="">Rs </label>
-                  <input {...register("price", { required: "Enter amount" })} className='text-gray-700 font-semibold border border-gray-300 rounded text-2xl w-[50%] px-3   flex items-center justify-center' placeholder='0' type="number" />
-
-                </div>
-                <div className="amount my-8 flex   justify-between items-center  ">
-                  <h1 className='text-lg text-gray-700' > What's it for   </h1>
-                  <input {...register("name", { required: "Field is required" })} className='text-gray-700 capitalize  border border-gray-300 rounded text-lg w-[60%]    flex items-center justify-center px-2 py-1' placeholder='food, ride, transport... ' type="text" />
+              {/* Form */}
+              <form onSubmit={handleSubmit(onSubmit)} className="mt-4 flex flex-col gap-4">
+                {/* Title Input */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">What's it for?</label>
+                  <input
+                    {...register("name", {
+                      required: "Expense title is required",
+                      pattern: {
+                        value: /^[A-Za-z]+(?: [A-Za-z]+)*$/,
+                        message: "Enter a valid name",
+                      },
+                    })}
+                    className="w-full text-gray-800 border border-gray-300 rounded-lg p-3 text-base outline-none focus:border-black focus:ring-1 focus:ring-black"
+                    placeholder="e.g. Grocery, Petrol, Lunch"
+                    type="text"
+                  />
+                  {errors.name && (
+                    <p className="text-red-500 font-medium text-xs mt-0.5">
+                      {errors.name.message}
+                    </p>
+                  )}
                 </div>
 
-                <div className="amount my-8 flex   justify-between items-center  ">
-                  <h1 className='text-lg text-gray-700' > Category  &nbsp;: </h1>
-                  <select {...register("cateogory")} className=' text-lg border  mx-2 border-gray-300 px-3 py-1 rounded  ' >
-                    <option className='text-sm  ' value="food">Food</option>
-                    <option className='text-sm' value="transport">Transport</option>
-                    <option className='text-sm' value="bills">Bills</option>
-                    <option className='text-sm' value="others">Others</option>
+                {/* Amount Input */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">Amount (Rs)</label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3 text-gray-400 font-medium text-base">
+                      Rs
+                    </span>
+                    <input
+                      {...register("price", {
+                        required: "Amount is required",
+                        pattern: {
+                          value: /^\d+$/,
+                          message: "Enter a valid amount",
+                        },
+                      })}
+                      className="w-full pl-10 pr-3 py-3 text-gray-800 border border-gray-300 rounded-lg text-base font-semibold outline-none focus:border-black focus:ring-1 focus:ring-black"
+                      placeholder="0"
+                      type="number"
+                    />
+                  </div>
+                  {errors.price && (
+                    <p className="text-red-500 font-medium text-xs mt-0.5">
+                      {errors.price.message}
+                    </p>
+                  )}
+                </div>
 
+                {/* Category Dropdown */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">Category</label>
+                  <select
+                    {...register("category")}
+                    className="w-full text-gray-800 border border-gray-300 bg-white rounded-lg p-3 text-base outline-none focus:border-black focus:ring-1 focus:ring-black"
+                  >
+                    <option value="food">Food</option>
+                    <option value="transport">Transport</option>
+                    <option value="bills">Bills</option>
+                    <option value="others">Others</option>
                   </select>
                 </div>
-                {errors.name && <p className="text-red-500 font-semibold text-lg">{errors.name.message}</p>}
-                {errors.price && <p className="text-red-500 font-semibold text-lg">{errors.price.message}</p>}
-                <button type='submit' className='bg-black p-3 mt-10 rounded-xl font-semibold w-full text-white '> Save expense</button>
 
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  className="bg-black py-3.5 mt-4 rounded-xl font-semibold w-full text-white shadow-md active:scale-95 transition-transform"
+                >
+                  Save Expense
+                </button>
               </form>
-
             </div>
           </div>
-        </div>
-
-
-
+        )}
       </div>
-      {/* // make the desktop veriosn of expense well done mobile is done  */}
-      <div className="dektop-version hidden md:block ">
-        <div className="expense-box flex gap-20 ">
-          <div className="add-expenses rounded bg-gray-200/45 border border-gray-300 min-h-80 w-[30%]">
-            <h1 className='font-bold text-lg  p-2 '>Add expense</h1>
-            <form className='flex flex-col gap-5 justify-cente' onSubmit={handleSubmit(onSubmit)}>
-              <input {...register("name", { required: "Title can not be empty" })} placeholder='Title' className='border mt-6 p-2 capitalize  bg-gray-100 border-gray-400 rounded  mx-auto w-[90%]' type="text" />
-              <input   {...register("price", { required: "Amount can not be empty", pattern: { value: /^\d+$/, message: "Enter vaid amount" } })} placeholder='Amount' className='border p-2 capitalize bg-gray-100 border-gray-400 rounded mx-auto w-[90%]' type="text" />
-              <select  {...register("category")} className='border cursor-pointer p-2 capitalize  bg-gray-100 border-gray-400 rounded  mx-auto w-[90%]' type="text">
 
-                <option value={"category"} className='text-sm'>Category</option>
+      {/* DESKTOP VERSION */}
+      <div className="desktop-version hidden md:block p-6">
+        <div className="expense-box flex gap-8">
+          {/* Add Form */}
+          <div className="add-expenses rounded-xl bg-gray-50 border border-gray-200 p-4 w-[35%]">
+            <h1 className="font-bold text-lg mb-4">Add Expense</h1>
+            <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
+              <input
+                {...register("name", {
+                  required: "Title cannot be empty",
+                  pattern: {
+                    value: /^[A-Za-z]+(?: [A-Za-z]+)*$/,
+                    message: "Enter a valid expense name",
+                  },
+                })}
+                placeholder="Title"
+                className="border p-2.5 bg-white border-gray-300 rounded-lg text-sm w-full outline-none focus:border-black"
+                type="text"
+              />
+              {errors.name && (
+                <p className="text-red-500 text-xs font-semibold">{errors.name.message}</p>
+              )}
 
-                <option className='text-sm' value={"food"}>Food</option>
-                <option className='text-sm' value={"transport"}>Transport</option>
-                <option className='text-sm' value={"bills"}>Bills</option>
-                <option className='text-sm' value={"others"}>Others</option>
+              <input
+                {...register("price", {
+                  required: "Amount cannot be empty",
+                  pattern: {
+                    value: /^\d+$/,
+                    message: "Enter a valid amount",
+                  },
+                })}
+                placeholder="Amount"
+                className="border p-2.5 bg-white border-gray-300 rounded-lg text-sm w-full outline-none focus:border-black"
+                type="number"
+              />
+              {errors.price && (
+                <p className="text-red-500 text-xs font-semibold">{errors.price.message}</p>
+              )}
 
+              <select
+                {...register("category")}
+                className="border p-2.5 bg-white border-gray-300 rounded-lg text-sm w-full outline-none focus:border-black cursor-pointer"
+              >
+                <option value="food">Food</option>
+                <option value="transport">Transport</option>
+                <option value="bills">Bills</option>
+                <option value="others">Others</option>
               </select>
 
-              {errors.name && <p className="text-red-500 px-7 font-semibold  text-sm">{errors.name.message}</p>}
-              {errors.price && <p className="text-red-500 my-[-0.5rem] px-7 font-semibold  text-sm">{errors.price.message}</p>}
-
-
-              <button type='submit' className='bg-black p-3 cursor-pointer my-10 rounded-xl font-semibold mx-auto w-[90%] text-white '> + Add Expense</button>
+              <button
+                type="submit"
+                className="bg-black p-3 mt-4 rounded-xl font-semibold w-full text-white hover:bg-gray-800 transition-colors"
+              >
+                + Add Expense
+              </button>
             </form>
-
           </div>
 
-          <div className="recent-expenses   border-gray-300/50 rounded border bg-gray-100/50 p-2  w-[70%]">
-            <h1 className='font-bold p-2 text-lg '>Recent expenses</h1>
-            {myexpenses.map((e) => {
-
-              return (
-
-
-                <div className="expense-box   border rounded px-2 py-3 border-gray-400 my-2 flex justify-between items-center ">
-
-                  <div className="name-date flex flex-col">
-                    <h1 className='font-bold capitalize ' >{e.name}</h1>
-                    <h2 className='text-sm text-gray-500  capitalize' >{e.category}</h2>
-                  </div>
-
-                  <div className="expense-price">
-                    <h1 className='font-bold mx-2'>-Rs {e.price} </h1>
-                  </div>
-
+          {/* Expenses List */}
+          <div className="recent-expenses border-gray-200 rounded-xl border bg-gray-50 p-4 w-[65%]">
+            <h1 className="font-bold text-lg mb-4">Recent Expenses</h1>
+            {myexpenses.map((e, idx) => (
+              <div
+                key={idx}
+                className="expense-box border bg-white rounded-lg px-4 py-3 border-gray-200 my-2 flex justify-between items-center"
+              >
+                <div className="name-date flex flex-col">
+                  <h1 className="font-bold capitalize text-gray-800">{e.name}</h1>
+                  <h2 className="text-xs text-gray-500 capitalize">{e.category}</h2>
                 </div>
+                <div className="expense-price">
+                  <h1 className="text-red-600 font-semibold text-base">-Rs {e.price}</h1>
+                </div>
+              </div>
+            ))}
 
-              )
-            })}
-
-            <div className={`no-recent-expenses my-25 flex justify-center items-center ${spent == 0 ? "block" : "hidden"} `}>
-              <h1 className=" italic  font-semibold text-gray-400  ">No recent expenses</h1>
-            </div>
+            {spent === 0 && (
+              <div className="no-recent-expenses my-20 flex justify-center items-center">
+                <h1 className="italic font-semibold text-gray-400">No recent expenses</h1>
+              </div>
+            )}
           </div>
         </div>
-
-
-
-
       </div>
     </div>
+  );
+};
 
-
-  )
-}
-
-export default Expenses
+export default Expenses;
