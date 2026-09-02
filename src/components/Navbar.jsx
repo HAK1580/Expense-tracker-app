@@ -2,7 +2,7 @@ import React from 'react'
 
 const Navbar = () => {
   return (
-    <div className="navbar-container md:p-5  p-2">
+    <div className="navbar-container  bg-gray-50 shadow-sm rounded-2xl  md:p-5  p-2">
         
           <ul className="flex  justify-between items-center">
             <div className="left-text flex flex-col">
