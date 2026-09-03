@@ -3,11 +3,12 @@ import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import API from '../api'; // Centralized file import karein
 
 // ---------------------------------------------------------
 // Shared constants / helpers
 // ---------------------------------------------------------
-const API_BASE_URL = 'http://localhost:3000/api/expenses';
+const API_BASE_URL = `${API.defaults.baseURL}/api/expenses`;
 
 const CATEGORIES = [
   { value: 'food', label: 'Food' },
