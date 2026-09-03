@@ -1,99 +1,424 @@
-import React, { useEffect, useState } from 'react';
-import { useForm, } from 'react-hook-form';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
 import axios from 'axios';
-const Expenses = ({ balance, setBalance, setSpent, spent }) => {
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+// ---------------------------------------------------------
+// Shared constants / helpers
+// ---------------------------------------------------------
+const API_BASE_URL = 'http://localhost:3000/api/expenses';
+
+const CATEGORIES = [
+  { value: 'food', label: 'Food' },
+  { value: 'transport', label: 'Transport' },
+  { value: 'bills', label: 'Bills' },
+  { value: 'others', label: 'Others' },
+];
+
+const TOAST_OPTIONS = {
+  position: 'top-right',
+  autoClose: 5000,
+  hideProgressBar: false,
+  closeOnClick: false,
+  pauseOnHover: true,
+  draggable: true,
+  theme: 'light',
+};
+
+const notifySuccess = (message) => toast.success(message, TOAST_OPTIONS);
+const notifyError = (message) => toast.error(message, TOAST_OPTIONS);
+
+// Enter should move focus / submit via the button, not insert newlines
+// or trigger a premature native form submit while typing.
+const handleEnterAsNext = (e) => {
+  if (e.key === 'Enter') e.preventDefault();
+};
+
+const SpinnerIcon = ({ className = 'w-4 fill-white animate-spin' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24">
+    <path d="M12 22c5.421 0 10-4.579 10-10h-2c0 4.337-3.663 8-8 8s-8-3.663-8-8c0-4.336 3.663-8 8-8V2C6.579 2 2 6.58 2 12c0 5.421 4.579 10 10 10z" />
+  </svg>
+);
+
+// ---------------------------------------------------------
+// AddExpenseForm - single implementation shared by the mobile
+// popup and the desktop side panel. `variant` only changes
+// labels/spacing, all behaviour (validation, loading, toasts)
+// is identical on both, so mobile is never missing a feature
+// that desktop has (and vice versa).
+// ---------------------------------------------------------
+const AddExpenseForm = ({ onAdded, variant, onDone }) => {
   const {
     handleSubmit,
     register,
     reset,
     formState: { errors },
   } = useForm();
+  const [loading, setLoading] = useState(false);
+  const isMobile = variant === 'mobile';
 
-  const [myexpenses, setMyexpenses] = useState([]);
-  const [popup, setPopup] = useState(false);
-  // show the expenses from the live db 
+  const onSubmit = async (data) => {
+    setLoading(true);
+    try {
+      const response = await axios.post(API_BASE_URL, data);
+      onAdded(response.data, Number(data.price));
+      notifySuccess('Expense added successfully!');
+      reset();
+      onDone?.();
+    } catch (err) {
+      console.error('Failed to add expense:', err);
+      notifyError('Could not add expense. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  async function saved_expenses() {
-    const response = await fetch("http://localhost:3000/api/expenses");
-    const data = await response.json();
-    setMyexpenses(data);
+  const inputClass = isMobile
+    ? 'w-full text-gray-800 border border-gray-300 rounded-lg p-3 text-base outline-none focus:border-black focus:ring-1 focus:ring-black disabled:opacity-50'
+    : 'border p-2.5 bg-white border-gray-300 rounded-lg text-sm w-full outline-none focus:border-black disabled:opacity-50';
 
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        {isMobile && <label className="text-sm font-semibold text-gray-700">What's it for?</label>}
+        <input
+          onKeyDown={handleEnterAsNext}
+          autoComplete="off"
+          disabled={loading}
+          {...register('name', {
+            required: 'Expense title is required',
+            pattern: {
+              value: /^(?:.*[a-zA-Z]){3,}.*$/,
+              message: 'Enter a valid name',
+            },
+          })}
+          className={inputClass}
+          placeholder={isMobile ? 'e.g. Grocery, Petrol, Lunch' : 'Title'}
+          type="text"
+        />
+        {errors.name && <p className="text-red-500 font-medium text-xs mt-0.5">{errors.name.message}</p>}
+      </div>
 
-  }
+      <div className="flex flex-col gap-1">
+        {isMobile && <label className="text-sm font-semibold text-gray-700">Amount (Rs)</label>}
+        <div className="relative flex items-center">
+          {isMobile && <span className="absolute left-3 text-gray-400 font-medium text-base">Rs</span>}
+          <input
+            onKeyDown={handleEnterAsNext}
+            autoComplete="off"
+            disabled={loading}
+            {...register('price', {
+              required: 'Amount cannot be empty',
+              pattern: {
+                value: /^\d+$/,
+                message: 'Enter a valid amount',
+              },
+            })}
+            className={isMobile ? `${inputClass} pl-10` : inputClass}
+            placeholder={isMobile ? '0' : 'Amount'}
+            type="number"
+          />
+        </div>
+        {errors.price && <p className="text-red-500 font-medium text-xs mt-0.5">{errors.price.message}</p>}
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {isMobile && <label className="text-sm font-semibold text-gray-700">Category</label>}
+        <select
+          disabled={loading}
+          {...register('category')}
+          className={isMobile ? inputClass : `${inputClass} cursor-pointer`}
+        >
+          {CATEGORIES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <button
+        type="submit"
+        disabled={loading}
+        className={`bg-black ${loading ? 'opacity-90 bg-gray-900' : 'hover:bg-gray-800'} cursor-pointer py-3.5 mt-4 rounded-xl font-semibold w-full text-white shadow-md active:scale-95 transition-transform disabled:cursor-not-allowed flex items-center justify-center gap-2`}
+      >
+        {loading && <SpinnerIcon />}
+        <span className={loading ? 'text-gray-300' : ''}>
+          {loading ? 'Adding...' : isMobile ? 'Save Expense' : '+ Add Expense'}
+        </span>
+      </button>
+    </form>
+  );
+};
+
+// ---------------------------------------------------------
+// ExpenseRow - renders either the normal display row, or
+// swaps name/category/price for inline inputs in the SAME
+// spot when in edit mode. Shared by both mobile and desktop,
+// so edit/delete behave identically everywhere.
+// ---------------------------------------------------------
+const ExpenseRow = ({ expense, onDelete, onUpdate, variant }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const rowRef = React.useRef(null);
+  const nameInputRef = React.useRef(null);
+
+  const { register, handleSubmit, reset } = useForm({
+    defaultValues: {
+      name: expense.name,
+      price: expense.price,
+      category: expense.category,
+    },
+  });
+
+  // react-hook-form's register gives its own ref; merge it with ours
+  // so we can still call .focus() on the name field.
+  const { ref: nameRegisterRef, ...nameRegisterRest } = register('name', {
+    required: true,
+    pattern: /^(?:.*[a-zA-Z]){3,}.*$/,
+  });
 
   useEffect(() => {
-    saved_expenses();
+    reset({
+      name: expense.name,
+      price: expense.price,
+      category: expense.category,
+    });
+  }, [expense, reset]);
 
+  useEffect(() => {
+    if (isEditing) {
+      nameInputRef.current?.focus();
+      nameInputRef.current?.select();
+    }
+  }, [isEditing]);
 
+  const handleCancel = useCallback(() => {
+    reset({
+      name: expense.name,
+      price: expense.price,
+      category: expense.category,
+    });
+    setIsEditing(false);
+  }, [expense, reset]);
 
-  }, [])
-
-  async function handleDelete(_id) {
-    const response = await axios.delete(`http://localhost:3000/api/expenses/${_id}`);
-    console.log(response.data);
-    setMyexpenses(prev => prev.filter((expense) => expense._id !== _id))
-
-  }
-  async function handleEdit(_id) {
-    const response = await axios.put(`http://localhost:3000/api/expenses/${_id}`, { name: "Updated Name", price: 100, category: "Updated Category" });
-     console.log(response.data);
-     setMyexpenses(prev => prev.map((expense) => expense._id === _id ? response.data : expense))
-  
-  }
-
-
-  // setMyexpenses((prev) => [...prev, data]);
-  const onSubmit = async (data) => {
-    const response = await axios.post('http://localhost:3000/api/expenses', data)
-    console.log("Api sent data : ", response.data)
-    setMyexpenses(prev => [...prev, response.data]);
-
-
-    setSpent(spent + Number(data.price));
-    setBalance(balance - Number(data.price));
-    setPopup(false);
-    console.log("Local Expenses", myexpenses);
-    reset();
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancel();
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+    }
   };
-  const handleEnterAsNext = (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
+
+  // Click outside the row while editing = cancel (nothing is saved
+  // until the checkmark is pressed, so this never loses data silently).
+  useEffect(() => {
+    if (!isEditing) return;
+    const handleClickOutside = (e) => {
+      if (rowRef.current && !rowRef.current.contains(e.target)) {
+        handleCancel();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isEditing, handleCancel]);
+
+  const onSubmit = async (data) => {
+    setIsSaving(true);
+    try {
+      const response = await axios.put(`${API_BASE_URL}/${expense._id}`, data);
+      onUpdate(expense._id, response.data);
+      notifySuccess('Expense updated!');
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Failed to update expense:', err);
+      notifyError('Could not update expense. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const rowClass =
+    variant === 'mobile'
+      ? 'expense-box border rounded-xl p-3 border-gray-200 bg-white shadow-sm my-2 flex justify-between items-center'
+      : 'expense-box border bg-white rounded-lg px-4 py-3 border-gray-200 my-2 flex justify-between items-center';
+
+  if (isEditing) {
+    return (
+      <form
+        ref={rowRef}
+        onSubmit={handleSubmit(onSubmit)}
+        onKeyDown={handleKeyDown}
+        className={`${rowClass} ring-2 ring-black/10 bg-gray-50/60`}
+      >
+        <div className="name-date flex flex-col gap-1">
+          <input
+            autoComplete="off"
+            {...nameRegisterRest}
+            ref={(el) => {
+              nameRegisterRef(el);
+              nameInputRef.current = el;
+            }}
+            disabled={isSaving}
+            className="font-bold capitalize text-gray-800 border-b border-gray-300 outline-none focus:border-black bg-transparent w-24 text-sm disabled:opacity-50"
+          />
+          <select
+            {...register('category')}
+            disabled={isSaving}
+            className="text-xs text-gray-500 capitalize border-b border-gray-300 outline-none focus:border-black bg-transparent w-24 disabled:opacity-50"
+          >
+            {CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="expense-price-delete-btn flex gap-3 items-center">
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={isSaving}
+            className="w-6 h-6 shrink-0 rounded-full bg-red-100 text-red-600 font-bold flex items-center justify-center hover:bg-red-200 transition-colors text-xs disabled:opacity-50"
+            aria-label="Cancel edit"
+          >
+            ✕
+          </button>
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="w-6 h-6 shrink-0 rounded-full bg-green-100 text-green-600 font-bold flex items-center justify-center hover:bg-green-200 transition-colors text-xs disabled:opacity-50"
+            aria-label="Save changes"
+          >
+            {isSaving ? <SpinnerIcon className="w-2.5 h-2.5 fill-green-600 animate-spin" /> : '✓'}
+          </button>
+          <input
+            autoComplete="off"
+            {...register('price', { required: true, pattern: /^\d+$/ })}
+            type="number"
+            disabled={isSaving}
+            className="font-bold text-red-600 text-base border-b border-gray-300 outline-none focus:border-black bg-transparent w-16 text-right disabled:opacity-50"
+          />
+        </div>
+      </form>
+    );
   }
+
+  return (
+    <div className={rowClass}>
+      <div className="name-date flex flex-col">
+        <h1 className="font-bold capitalize text-gray-800">{expense.name}</h1>
+        <h2 className="text-xs text-gray-500 capitalize">{expense.category}</h2>
+      </div>
+      <div className="expense-price-delete-btn flex gap-4 items-center">
+        <div className="delete-edit-btns flex gap-1.5 items-center">
+          <img
+            onClick={() => onDelete(expense._id)}
+            className="w-4 cursor-pointer"
+            src="/delete.png"
+            alt="Delete expense"
+          />
+          <img
+            onClick={() => setIsEditing(true)}
+            className="w-4 cursor-pointer"
+            src="/draw.png"
+            alt="Edit expense"
+          />
+        </div>
+        <h1 className="font-bold text-red-600 text-base">-Rs {expense.price}</h1>
+      </div>
+    </div>
+  );
 };
+
+// ---------------------------------------------------------
+// Main Expenses Component
+// ---------------------------------------------------------
+const Expenses = ({ balance, setBalance, setSpent, spent }) => {
+  const [expenses, setExpenses] = useState([]);
+  const [isLoadingList, setIsLoadingList] = useState(true);
+  const [popup, setPopup] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const response = await fetch(API_BASE_URL);
+        const data = await response.json();
+        if (isMounted) setExpenses(data);
+      } catch (err) {
+        console.error('Failed to load expenses:', err);
+        notifyError('Could not load expenses.');
+      } finally {
+        if (isMounted) setIsLoadingList(false);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleDelete = async (_id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/${_id}`);
+      setExpenses((prev) => prev.filter((expense) => expense._id !== _id));
+      notifySuccess('Expense deleted!');
+    } catch (err) {
+      console.error('Failed to delete expense:', err);
+      notifyError('Could not delete expense. Please try again.');
+    }
+  };
+
+  const handleUpdate = (_id, updatedExpense) => {
+    setExpenses((prev) => prev.map((exp) => (exp._id === _id ? updatedExpense : exp)));
+  };
+
+  const handleAdded = (newExpense, price) => {
+    setExpenses((prev) => [...prev, newExpense]);
+    setSpent(spent + price);
+    setBalance(balance - price);
+  };
 
   return (
     <div className="w-full">
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick={false}
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+
       {/* MOBILE VERSION */}
-      <div className="mobile-version  block md:hidden p-2 overflow-auto">
+      <div className="mobile-version block md:hidden p-2 overflow-auto">
         <h1 className="font-semibold text-xl mb-4">Recent Expenses</h1>
 
-        {myexpenses.map((e, index) => (
-
-          <div
-            key={index}
-            className="expense-box border rounded-xl p-3 border-gray-200 bg-white  shadow-sm my-2 flex justify-between items-center"
-          >
-            <div className="name-date flex flex-col">
-              <h1 className="font-bold capitalize text-gray-800">{e.name}</h1>
-              <h2 className="text-xs text-gray-500 capitalize">{e.category}</h2>
-            </div>
-            <div className="expense-price-delete-btn   flex gap-4 items-center">
-              <div className="delete-edit-btns flex gap-1.5 items-center ">
-                <img onClick={() => handleDelete(e._id)} className='w-4 cursor-pointer' src="public\delete.png" alt="" />
-                <img className='w-4 cursor-pointer' src="public\draw.png" alt="" />
-              </div>
-              <h1 className="font-bold text-red-600 text-base">-Rs {e.price}</h1>
-            </div>
+        {isLoadingList && (
+          <div className="flex justify-center items-center my-10">
+            <SpinnerIcon className="w-6 fill-gray-400 animate-spin" />
           </div>
-        ))}
+        )}
 
-        {myexpenses.length === 0 && (
+        {!isLoadingList &&
+          expenses.map((e) => (
+            <ExpenseRow key={e._id} expense={e} onDelete={handleDelete} onUpdate={handleUpdate} variant="mobile" />
+          ))}
+
+        {!isLoadingList && expenses.length === 0 && (
           <div className="no-recent-expenses my-10 flex justify-center items-center">
             <h1 className="italic font-semibold text-gray-400">No recent expenses</h1>
           </div>
         )}
 
-        {/* Trigger Button */}
         <button
           onClick={() => setPopup(true)}
           className="bg-black py-3.5 my-6 rounded-xl font-semibold w-full text-white shadow-md active:scale-95 transition-transform"
@@ -101,99 +426,24 @@ const Expenses = ({ balance, setBalance, setSpent, spent }) => {
           + Add Expense
         </button>
 
-        {/* MOBILE POPUP MODAL */}
         {popup && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="popup-box bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all">
-              {/* Header */}
               <div className="add-expense-cross-sign pb-3 border-b border-gray-100 flex justify-between items-center">
                 <h1 className="font-bold text-xl text-gray-800">Add Expense</h1>
                 <button
                   type="button"
                   onClick={() => setPopup(false)}
                   className="text-gray-400 hover:text-black font-bold text-xl px-2"
+                  aria-label="Close"
                 >
                   ✕
                 </button>
               </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit(onSubmit)} className="mt-4 md:hidden flex flex-col gap-4">
-                {/* Title Input */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">What's it for?</label>
-                  <input onKeyDown={handleEnterAsNext}   autoComplete="off" 
-
-                    {...register("name", {
-                      required: "Expense title is required",
-                      pattern: {
-                        value: /^(?:.*[a-zA-Z]){3,}.*$/,
-                        message: "Enter a valid name",
-                      },
-                    })}
-                    className="w-full text-gray-800 border border-gray-300 rounded-lg p-3 text-base outline-none focus:border-black focus:ring-1 focus:ring-black"
-                    placeholder="e.g. Grocery, Petrol, Lunch"
-                    type="text"
-                  />
-                  {errors.name && (
-                    <p className="text-red-500 font-medium text-xs mt-0.5">
-                      {errors.name.message}
-                    </p>
-                  )}
-                </div>
-
-                {/* Amount Input */}
-                <div  className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Amount (Rs)</label>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-3 text-gray-400 font-medium text-base">
-                      Rs
-                    </span>
-                    <input onKeyDown={handleEnterAsNext}   autoComplete="off" 
-
-                      {...register("price", {
-
-                        pattern: {
-                          value: /^\d+$/,
-                          message: "Enter a valid amount",
-                        },
-                      })}
-                      className="w-full pl-10 pr-3 py-3 text-gray-800 border border-gray-300 rounded-lg text-base font-semibold outline-none focus:border-black focus:ring-1 focus:ring-black"
-                      placeholder={0}
-                      type="number"
-                    />
-                  </div>
-                  {errors.price && (
-                    <p className="text-red-500 font-medium text-xs mt-0.5">
-                      {errors.price.message}
-                    </p>
-                  )}
-                </div>
-
-                {/* Category Dropdown */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Category</label>
-                  <select
-                    {...register("category")}
-                    className="w-full text-gray-800 border border-gray-300 bg-white rounded-lg p-3 text-base outline-none focus:border-black focus:ring-1 focus:ring-black"
-                  >
-                    <option value="food">Food</option>
-                    <option value="transport">Transport</option>
-                    <option value="bills">Bills</option>
-                    <option value="others">Others</option>
-                  </select>
-                </div>
-
-                {/* Submit Button */}
-                <button 
-                  type="submit"
-                  className="bg-black py-3.5 mt-4 rounded-xl font-semibold w-full text-white shadow-md active:scale-95 transition-transform"
-                >
-                  Save Expense
-                </button>
-
-
-              </form>
+              <div className="mt-4">
+                <AddExpenseForm variant="mobile" onAdded={handleAdded} onDone={() => setPopup(false)} />
+              </div>
             </div>
           </div>
         )}
@@ -202,86 +452,26 @@ const Expenses = ({ balance, setBalance, setSpent, spent }) => {
       {/* DESKTOP VERSION */}
       <div className="desktop-version hidden md:block p-6">
         <div className="expense-box flex gap-8">
-          {/* Add Form */}
           <div className="add-expenses rounded-xl bg-gray-50 border border-gray-200 p-4 w-[35%]">
             <h1 className="font-bold text-lg mb-4">Add Expense</h1>
-            <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
-              <input
-                {...register("name", {
-                  required: "Title cannot be empty",
-                  pattern: {
-                    value: /^(?:.*[a-zA-Z]){3,}.*$/,
-                    message: "Enter a valid expense name",
-                  },
-                })}
-                placeholder="Title"
-                className="border p-2.5 bg-white border-gray-300 rounded-lg text-sm w-full outline-none focus:border-black"
-                type="text"
-              />
-              {errors.name && (
-                <p className="text-red-500 text-xs font-semibold">{errors.name.message}</p>
-              )}
-
-              <input
-                {...register("price", {
-                  required: "Amount cannot be  empty",
-                  pattern: {
-                    value: /^\d+$/,
-                    message: "Enter a valid amount",
-                  },
-                })}
-                placeholder="Amount"
-                className="border p-2.5 bg-white border-gray-300 rounded-lg text-sm w-full outline-none focus:border-black"
-                type="number"
-              />
-              {errors.price && (
-                <p className="text-red-500 text-xs font-semibold">{errors.price.message}</p>
-              )}
-
-              <select
-                {...register("category")}
-                className="border p-2.5 bg-white border-gray-300 rounded-lg text-sm w-full outline-none focus:border-black cursor-pointer"
-              >
-                <option value="food">Food</option>
-                <option value="transport">Transport</option>
-                <option value="bills">Bills</option>
-                <option value="others">Others</option>
-              </select>
-
-              <button
-                type="submit"
-                className="bg-black p-3 mt-4 rounded-xl font-semibold w-full text-white hover:bg-gray-800 transition-colors"
-              >
-                + Add Expense
-              </button>
-            </form>
+            <AddExpenseForm variant="desktop" onAdded={handleAdded} />
           </div>
 
-          {/* Expenses List */}
           <div className="recent-expenses border-gray-200 rounded-xl border bg-gray-50 p-4 w-[65%]">
             <h1 className="font-bold text-lg mb-4">Recent Expenses</h1>
-            {myexpenses.map((e, idx) => (
-              <div
-                key={idx}
-                className="expense-box border bg-white rounded-lg px-4 py-3 border-gray-200 my-2 flex justify-between items-center"
-              >
-                <div className="name-date flex flex-col">
-                  <h1 className="font-bold capitalize text-gray-800">{e.name}</h1>
-                  <h2 className="text-xs text-gray-500 capitalize">{e.category}</h2>
-                </div>
-                <div className="expense-price-delete-btn   flex gap-6 items-center">
-                  <div className="delete-edit-btns flex gap-2 items-center ">
-                    <img onClick={() => handleDelete(e._id)} className='w-4 cursor-pointer' src="public\delete.png" alt="" />
-                    <img onClick={() => handleEdit(e._id)} className='w-5 cursor-pointer' src="public\draw.png" alt="" />
-                  </div>
-                  <h1 className="font-bold text-red-600 text-base">-Rs {e.price}</h1>
-                </div>
 
-
+            {isLoadingList && (
+              <div className="flex justify-center items-center my-20">
+                <SpinnerIcon className="w-6 fill-gray-400 animate-spin" />
               </div>
-            ))}
+            )}
 
-            {myexpenses.length === 0 && (
+            {!isLoadingList &&
+              expenses.map((e) => (
+                <ExpenseRow key={e._id} expense={e} onDelete={handleDelete} onUpdate={handleUpdate} variant="desktop" />
+              ))}
+
+            {!isLoadingList && expenses.length === 0 && (
               <div className="no-recent-expenses my-20 flex justify-center items-center">
                 <h1 className="italic font-semibold text-gray-400">No recent expenses</h1>
               </div>
@@ -289,15 +479,8 @@ const Expenses = ({ balance, setBalance, setSpent, spent }) => {
           </div>
         </div>
       </div>
-
-
-
     </div>
-
-
   );
 };
 
 export default Expenses;
-
-
