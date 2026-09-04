@@ -62,7 +62,7 @@ const AddExpenseForm = ({ onAdded, variant, onDone }) => {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const response = await axios.post(API_BASE_URL, data);
+      const response = await API.post(API_BASE_URL, data);
       onAdded(response.data, Number(data.price));
       notifySuccess('Expense added successfully!');
       reset();
@@ -230,7 +230,7 @@ const ExpenseRow = ({ expense, onDelete, onUpdate, variant }) => {
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
-      const response = await axios.put(`${API_BASE_URL}/${expense._id}`, data);
+      const response = await PUT.put(`${API_BASE_URL}/${expense._id}`, data);
       onUpdate(expense._id, response.data);
       notifySuccess('Expense updated!');
       setIsEditing(false);
@@ -369,7 +369,7 @@ const Expenses = ({ balance, setBalance, setSpent, spent }) => {
 
   const handleDelete = async (_id) => {
     try {
-      await axios.delete(`${API_BASE_URL}/${_id}`);
+      await API.delete(`${API_BASE_URL}/${_id}`);
       setExpenses((prev) => prev.filter((expense) => expense._id !== _id));
       notifySuccess('Expense deleted!');
     } catch (err) {
