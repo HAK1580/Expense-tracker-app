@@ -1,15 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
-import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import API from '../api'; // Centralized file import karein
+import API from '../api'; // Centralized Axios Instance
 
 // ---------------------------------------------------------
 // Shared constants / helpers
 // ---------------------------------------------------------
-const API_BASE_URL = `${API.defaults.baseURL}/api/expenses`;
-
 const CATEGORIES = [
   { value: 'food', label: 'Food' },
   { value: 'transport', label: 'Transport' },
@@ -30,8 +27,6 @@ const TOAST_OPTIONS = {
 const notifySuccess = (message) => toast.success(message, TOAST_OPTIONS);
 const notifyError = (message) => toast.error(message, TOAST_OPTIONS);
 
-// Enter should move focus / submit via the button, not insert newlines
-// or trigger a premature native form submit while typing.
 const handleEnterAsNext = (e) => {
   if (e.key === 'Enter') e.preventDefault();
 };
@@ -43,18 +38,14 @@ const SpinnerIcon = ({ className = 'w-4 fill-white animate-spin' }) => (
 );
 
 // ---------------------------------------------------------
-// AddExpenseForm - single implementation shared by the mobile
-// popup and the desktop side panel. `variant` only changes
-// labels/spacing, all behaviour (validation, loading, toasts)
-// is identical on both, so mobile is never missing a feature
-// that desktop has (and vice versa).
+// AddExpenseForm
 // ---------------------------------------------------------
 const AddExpenseForm = ({ onAdded, variant, onDone }) => {
   const {
     handleSubmit,
     register,
     reset,
-    formState: { errors,isLoading },
+    formState: { errors },
   } = useForm();
   const [loading, setLoading] = useState(false);
   const isMobile = variant === 'mobile';
@@ -62,7 +53,7 @@ const AddExpenseForm = ({ onAdded, variant, onDone }) => {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const response = await API.post(API_BASE_URL, data);
+      const response = await API.post('/api/expenses', data);
       onAdded(response.data, Number(data.price));
       notifySuccess('Expense added successfully!');
       reset();
@@ -154,10 +145,7 @@ const AddExpenseForm = ({ onAdded, variant, onDone }) => {
 };
 
 // ---------------------------------------------------------
-// ExpenseRow - renders either the normal display row, or
-// swaps name/category/price for inline inputs in the SAME
-// spot when in edit mode. Shared by both mobile and desktop,
-// so edit/delete behave identically everywhere.
+// ExpenseRow
 // ---------------------------------------------------------
 const ExpenseRow = ({ expense, onDelete, onUpdate, variant }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -173,8 +161,6 @@ const ExpenseRow = ({ expense, onDelete, onUpdate, variant }) => {
     },
   });
 
-  // react-hook-form's register gives its own ref; merge it with ours
-  // so we can still call .focus() on the name field.
   const { ref: nameRegisterRef, ...nameRegisterRest } = register('name', {
     required: true,
     pattern: /^(?:.*[a-zA-Z]){3,}.*$/,
@@ -214,8 +200,6 @@ const ExpenseRow = ({ expense, onDelete, onUpdate, variant }) => {
     }
   };
 
-  // Click outside the row while editing = cancel (nothing is saved
-  // until the checkmark is pressed, so this never loses data silently).
   useEffect(() => {
     if (!isEditing) return;
     const handleClickOutside = (e) => {
@@ -230,7 +214,7 @@ const ExpenseRow = ({ expense, onDelete, onUpdate, variant }) => {
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
-      const response = await PUT.put(`${API_BASE_URL}/${expense._id}`, data);
+      const response = await API.put(`/api/expenses/${expense._id}`, data);
       onUpdate(expense._id, response.data);
       notifySuccess('Expense updated!');
       setIsEditing(false);
@@ -317,22 +301,26 @@ const ExpenseRow = ({ expense, onDelete, onUpdate, variant }) => {
       </div>
       <div className="expense-price-delete-btn flex gap-4 items-center">
         <div className="delete-edit-btns flex gap-1.5 items-center">
-          {isSaving?<SpinnerIcon className="w-4 fill-gray-400 animate-spin" /> :
+          {isSaving ? (
+            <SpinnerIcon className="w-4 fill-gray-400 animate-spin" />
+          ) : (
             <img
               onClick={() => onDelete(expense._id)}
               className="w-4 cursor-pointer"
               src="/delete.png"
               alt="Delete expense"
             />
-          }
-          {isSaving ? <SpinnerIcon className="w-4 fill-gray-400 animate-spin" /> :
+          )}
+          {isSaving ? (
+            <SpinnerIcon className="w-4 fill-gray-400 animate-spin" />
+          ) : (
             <img
               onClick={() => setIsEditing(true)}
               className="w-4 cursor-pointer"
               src="/draw.png"
               alt="Edit expense"
             />
-          }
+          )}
         </div>
         <h1 className="font-bold text-red-600 text-base">-Rs {expense.price}</h1>
       </div>
@@ -352,9 +340,8 @@ const Expenses = ({ balance, setBalance, setSpent, spent }) => {
     let isMounted = true;
     (async () => {
       try {
-        const response = await fetch(API_BASE_URL);
-        const data = await response.json();
-        if (isMounted) setExpenses(data);
+        const response = await API.get('/api/expenses');
+        if (isMounted) setExpenses(response.data);
       } catch (err) {
         console.error('Failed to load expenses:', err);
         notifyError('Could not load expenses.');
@@ -369,7 +356,7 @@ const Expenses = ({ balance, setBalance, setSpent, spent }) => {
 
   const handleDelete = async (_id) => {
     try {
-      await API.delete(`${API_BASE_URL}/${_id}`);
+      await API.delete(`/api/expenses/${_id}`);
       setExpenses((prev) => prev.filter((expense) => expense._id !== _id));
       notifySuccess('Expense deleted!');
     } catch (err) {
