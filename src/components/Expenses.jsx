@@ -54,7 +54,7 @@ const AddExpenseForm = ({ onAdded, variant, onDone }) => {
     handleSubmit,
     register,
     reset,
-    formState: { errors },
+    formState: { errors,isLoading },
   } = useForm();
   const [loading, setLoading] = useState(false);
   const isMobile = variant === 'mobile';
@@ -317,18 +317,22 @@ const ExpenseRow = ({ expense, onDelete, onUpdate, variant }) => {
       </div>
       <div className="expense-price-delete-btn flex gap-4 items-center">
         <div className="delete-edit-btns flex gap-1.5 items-center">
-          <img
-            onClick={() => onDelete(expense._id)}
-            className="w-4 cursor-pointer"
-            src="/delete.png"
-            alt="Delete expense"
-          />
-          <img
-            onClick={() => setIsEditing(true)}
-            className="w-4 cursor-pointer"
-            src="/draw.png"
-            alt="Edit expense"
-          />
+          {isSaving?<SpinnerIcon className="w-4 fill-gray-400 animate-spin" /> :
+            <img
+              onClick={() => onDelete(expense._id)}
+              className="w-4 cursor-pointer"
+              src="/delete.png"
+              alt="Delete expense"
+            />
+          }
+          {isSaving ? <SpinnerIcon className="w-4 fill-gray-400 animate-spin" /> :
+            <img
+              onClick={() => setIsEditing(true)}
+              className="w-4 cursor-pointer"
+              src="/draw.png"
+              alt="Edit expense"
+            />
+          }
         </div>
         <h1 className="font-bold text-red-600 text-base">-Rs {expense.price}</h1>
       </div>
